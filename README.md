@@ -1,4 +1,4 @@
-# binairo-solver
+# Binairo Solver
 Reads and solves puzzles from https://www.puzzle-binairo.com/ using python
 
 1. Ensure you have night mode enabled on the site (or replace the reference squares with their day mode counterparts)
