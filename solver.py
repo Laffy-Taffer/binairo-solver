@@ -1,21 +1,6 @@
 import imagehash
 import time
-import os
-import shutil
 from PIL import Image
-
-
-# Clears the Progress folder
-folder = 'Progress/'
-for filename in os.listdir(folder):
-    file_path = os.path.join(folder, filename)
-    try:
-        if os.path.isfile(file_path) or os.path.islink(file_path):
-            os.unlink(file_path)
-        elif os.path.isdir(file_path):
-            shutil.rmtree(file_path)
-    except Exception as e:
-        print('Failed to delete %s. Reason: %s' % (file_path, e))
 
 
 # Replace a specific index of a string
@@ -25,14 +10,22 @@ def index_replace(string, newstring, index):
 
 # Reads the image and writes it to an array, set as a function for cleanliness
 def read_img(path):
+    # Checks for unread cells of the puzzle in read_img
+    def readerrorcheck(a):
+        global readerrors, readerror, hash_cutoff
+        for x in a:
+            if len(x) != pwidth:
+                readerror = True
+                readerrors += 1
+                hash_cutoff += 1
+                return True
+        return False
+
     # Defines cell height and width of puzzle
-    global img, pwidth, pheight, hash_cutoff, readerrors, readerror
+    global img, pwidth, pheight
     img = Image.open(path)
     pwidth = int((img.size[0] - 1) / 23)
     pheight = int((img.size[1] - 1) / 23)
-    print("Height:", pheight, "Width:", pwidth)
-
-    print(img.size)
 
     # Creates an empty array with an amount of rows equal to puzzle height
     array = []
@@ -66,13 +59,14 @@ def read_img(path):
         readerrorcheck(array)
 
         if hash_cutoff > 30:
-            print("Cannot read image, stopping")
+            write_img(array, "HCF")
+            print("Something went wrong while attempting to read the image. Check HCF.jpg")
             input()
             quit()
 
-    if not readerrorcheck(array):
-        write_img(array, "Progress/HCF")
-        print("Something went wrong while attempting to read the image. Check HCF.jpg for error location")
+    if readerrorcheck(array):
+        write_img(array, "HCF")
+        print("Something went wrong while attempting to read the image. Check HCF.jpg")
         input()
         quit()
 
@@ -98,19 +92,6 @@ def write_img(array, imgname):
         currpos = (0, currpos[1] + 23)
 
     output.save(imgname + '.jpg')
-
-
-# Checks for unread cells of the puzzle in read_img. I didn't add this to that function because I'm lazy and fuck you
-def readerrorcheck(array):
-    global readerror, readerrors, hash_cutoff
-    for r in array:
-        if len(r) != pwidth:
-            write_img(array, 'Progress/Readerror' + str(readerrors))
-            readerror = True
-            readerrors += 1
-            hash_cutoff += 1
-            return False
-    return True
 
 
 # Solves obvious moves, should be used as often as possible
@@ -225,7 +206,6 @@ def moveloop(array):
             array = n_rot_array.copy()
             changecount += 1
             print("Finished pass", changecount)
-            write_img(array, "Progress/Pass" + str(changecount))
         else:
             for turn in range(4):
                 n_rot_array = list(map(''.join, list(zip(*p_rot_array[::-1]))))
@@ -250,7 +230,6 @@ def moveloop(array):
                 array = n_rot_array.copy()
                 changecount += 1
                 print("Finished pass", changecount)
-                write_img(array, "Progress/Pass" + str(changecount))
     return array
 
 
@@ -284,15 +263,11 @@ def guess(array):
     return array
 
 
-# Prints the puzzle array for my own sanity
 puzzleArray = read_img("puzzle.jpg")
 empty = 0
-print("Puzzle:")
 for row in puzzleArray:
-    print(row)
     empty = empty + ((len(row)/2) - row.count("1")) + ((len(row)/2) - row.count("0"))
-print("Empty:", int(empty), '\n\n')
-
+print("Successfully read puzzle.\nEmpty:", int(empty), '\n')
 
 start = time.time()
 changecount = 0
@@ -304,11 +279,9 @@ if puzzleArray is None:
 if not checksolved(puzzleArray):
     puzzleArray = guess(puzzleArray)
 
-
 # Stops the clock and writes the solution to an image
 end = round(time.time()-start, 3)
-write_img(puzzleArray, "Solution")
-
+write_img(puzzleArray, "Output")
 
 # Prints the solved array for my own sanity
 if checksolved(puzzleArray):
@@ -321,6 +294,7 @@ for row in puzzleArray:
     solved = solved + ((len(row)/2) - row.count("1")) + ((len(row)/2) - row.count("0"))
 solved = int(empty - solved)
 print("Solved: " + str(solved) + "  Passes: " + str(changecount))
-print(str(int((solved/empty)*100)) + "% Completed")
+if not checksolved(puzzleArray):
+    print(str(int((solved/empty)*100)) + "% Completed")
 print("Time Elapsed: ", end, "seconds")
 input()
